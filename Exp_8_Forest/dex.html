@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+2 <html lang="en">
+3
+4 <head>
+5 <meta charset="UTF-8">
+6 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+7 <title>Grouped Bar Chart and Interactive Pie Chart - Forest Cover</title>
+8 <script src="https://d3js.org/d3.v7.min.js"></script>
+9 <style>
+10 .bar {
+11 fill-opacity: 0.7;
+12 }
+13
+14 .axis-label {
+15 font-size: 12px;
+16 font-weight: bold;
+17 }
+18
+19 .legend text {
+20 font-size: 12px;
+21 }
+22
+23 .pie-label {
+24 font-size: 12px;
+25 text-anchor: middle;
+26 fill: white;
+27 }
+28
+29 .info-box {
+30 font-size: 16px;
+31 font-weight: bold;
+32 text-align: center;
+33 margin-top: 10px;
+34 }
+35
+36 .scatter-dot {
+37 fill: steelblue;
+38 stroke: #333;
+39 stroke-width: 1px;
+40 fill-opacity: 0.7;
+41 }
+42
+43 .line {
+44 fill: none;
+45 stroke-width: 2;
+46 }
+47
+48 .tooltip {
+49 position: absolute;
+50 text-align: center;
+51 padding: 5px;
+52 font: 12px sans-serif;
+53 background: lightsteelblue;
+54 border: 1px solid gray;
+55 border-radius: 5px;
+56 pointer-events: none;
+57 opacity: 0;
+58 }
+59 </style>
+60 </head>
+61
+62 <body>
+63 <h2>Grouped Bar Chart of Forest Cover by State/UT</h2>
+64 <div id="bar-chart"></div>
+65 <div class="info-box" id="info-box">Click on a bar to see details</div>
+66
+67 <h2>Interactive Pie Chart of Total Forest Area Distribution</h2>
+68 <div id="pie-chart"></div>
+69 <div class="info-box" id="info-box2">Click on a slice to see details</div>
+70
+71 <h2>Scatter Plot: Geographical Area vs Total Forest</h2>
+72 <div id="scatter-plot"></div>
+73 <div class="info-box" id="scatter-info">Hover over a point to see details</div>
+74
+75 <h2>Interactive Timeline Chart: Forest Cover Over Years</h2>
+76 <div id="timeline-chart"></div>
+77 <div class="tooltip" id="tooltip"></div>
+78
+79 <script>
+80 const margin = { top: 40, right: 30, bottom: 70, left: 60 };
+81 const width = 800 - margin.left - margin.right;
+82 const height = 500 - margin.top - margin.bottom;
+83
+84 const pieWidth = 400;
+85 const pieHeight = 400;
+86 const radius = Math.min(pieWidth, pieHeight) / 2;
+87
+88 const svgBar = d3.select("#bar-chart")
+89 .append("svg")
+90 .attr("width", width + margin.left + margin.right)
+91 .attr("height", height + margin.top + margin.bottom)
+92 .append("g")
+93 .attr("transform", `translate(${margin.left},${margin.top})`);
+94
+95 const svgPie = d3.select("#pie-chart")
+96 .append("svg")
+.attr("width", pieWidth)
+98 .attr("height", pieHeight)
+99 .append("g")
+100 .attr("transform", `translate(${pieWidth / 2},${pieHeight / 2})`);
+101
+102 const infoBox = d3.select("#info-box");
+103 const infoBox2 = d3.select("#info-box2");
+104
+105 const scatterMargin = { top: 40, right: 30, bottom: 70, left: 90 };
+106 const scatterWidth = 800 - scatterMargin.left - scatterMargin.right;
+107 const scatterHeight = 500 - scatterMargin.top - scatterMargin.bottom;
+108
+109 const svgScatter = d3.select("#scatter-plot")
+110 .append("svg")
+111 .attr("width", scatterWidth + scatterMargin.left + scatterMargin.right)
+112 .attr("height", scatterHeight + scatterMargin.top + scatterMargin.bottom)
+113 .append("g")
+114 .attr("transform", `translate(${scatterMargin.left},${scatterMargin.top})`);
+115
+116 const scatterInfoBox = d3.select("#scatter-info");
+117
+118 // Read the data
+119 d3.csv("Forest.csv").then(function (data) {
+120 const subgroups = ['Very dense forest', 'Mod. dense forest', 'Open forest'];
+121
+122 const groups = data.map(d => d['State/UTs']);
+123
+124 const x = d3.scaleBand()
+125 .domain(groups)
+126 .range([0, width])
+127 .padding([0.2]);
+128
+129 svgBar.append("g")
+130 .attr("transform", `translate(0,${height})`)
+131 .call(d3.axisBottom(x))
+132 .selectAll("text")
+133 .attr("transform", "translate(-10,0)rotate(-45)")
+134 .style("text-anchor", "end");
+135
+136 const y = d3.scaleLinear()
+137 .domain([0, d3.max(data, d => +d['Very dense forest'])])
+138 .range([height, 0]);
+139
+140 svgBar.append("g")
+141 .call(d3.axisLeft(y));
+142
+143 const xSubgroup = d3.scaleBand()
+144 .domain(subgroups)
+145 .range([0, x.bandwidth()])
+146 .padding([0.05]);
+147
+148 const color = d3.scaleOrdinal()
+149 .domain(subgroups)
+150 .range(['#4daf4a', '#377eb8', '#ff7f00']);
+151
+152 svgBar.append("g")
+153 .selectAll("g")
+154 .data(data)
+155 .join("g")
+156 .attr("transform", d => `translate(${x(d['State/UTs'])}, 0)`)
+157 .selectAll("rect")
+158 .data(d => subgroups.map(key => ({ key: key, value: d[key], state: d['State/UTs'] }))) // Add state info
+159 .join("rect")
+160 .attr("x", d => xSubgroup(d.key))
+161 .attr("y", d => y(d.value))
+162 .attr("width", xSubgroup.bandwidth())
+163 .attr("height", d => height - y(d.value))
+164 .attr("fill", d => color(d.key))
+165 .attr("class", "bar")
+166 .on("click", function (event, d) {
+167 infoBox.text(`State/UT: ${d.state}, ${d.key}: ${d.value} sq km`);
+168 });
+169
+170
+171 const legendBar = svgBar.append("g")
+172 .attr("transform", `translate(${width - 120}, -10)`);
+173
+174 subgroups.forEach((subgroup, i) => {
+175 legendBar.append("rect")
+176 .attr("x", 0)
+177 .attr("y", i * 20)
+178 .attr("width", 18)
+179 .attr("height", 18)
+180 .style("fill", color(subgroup));
+181
+182 legendBar.append("text")
+183 .attr("x", 24)
+184 .attr("y", i * 20 + 9)
+185 .attr("dy", "0.35em")
+186 .text(subgroup);
+187 });
+188
+189 const totalForestArea = data.map(d => ({
+190 state: d['State/UTs'],
+191 value: +d['Total forest']
+192 }));
+193
+194 const pie = d3.pie()
+.value(d => d.value);
+196
+197 const arc = d3.arc()
+198 .innerRadius(0)
+199 .outerRadius(radius);
+200
+201 const pieColor = d3.scaleOrdinal()
+202 .domain(totalForestArea.map(d => d.state))
+203 .range(d3.schemeSet3);
+204
+205 svgPie.selectAll('path')
+206 .data(pie(totalForestArea))
+207 .enter()
+208 .append('path')
+209 .attr('d', arc)
+210 .attr('fill', d => pieColor(d.data.state))
+211 .attr("stroke", "white")
+212 .style("stroke-width", "2px")
+213 .on("click", function (event, d) {
+214 <!-- console.log("hei") -->
+215 infoBox2.text(`State/UT: ${d.data.state}, Total Forest Area: ${d.data.value} sq km`);
+216 });
+217
+218
+219 const xScale = d3.scaleLinear()
+220 .domain([0, d3.max(data, d => +d['Geographical area'])])
+221 .range([0, scatterWidth]);
+222
+223 const yScale = d3.scaleLinear()
+224 .domain([0, d3.max(data, d => +d['Total forest'])])
+225 .range([scatterHeight, 0]);
+226
+227 svgScatter.append("g")
+228 .attr("transform", `translate(0,${scatterHeight})`)
+229 .call(d3.axisBottom(xScale))
+230 .append("text")
+231 .attr("x", scatterWidth / 2)
+232 .attr("y", 50)
+233 .attr("fill", "black")
+234 .attr("class", "axis-label")
+235 .text("Geographical Area (sq km)");
+236
+237 svgScatter.append("g")
+238 .call(d3.axisLeft(yScale))
+239 .append("text")
+240 .attr("x", -scatterHeight / 2)
+241 .attr("y", -60)
+242 .attr("fill", "black")
+243 .attr("transform", "rotate(-90)")
+244 .attr("class", "axis-label")
+245 .text("Total Forest Area (sq km)");
+246
+247 svgScatter.selectAll("circle")
+248 .data(data)
+249 .enter()
+250 .append("circle")
+251 .attr("cx", d => xScale(+d['Geographical area']))
+252 .attr("cy", d => yScale(+d['Total forest']))
+253 .attr("r", 5)
+254 .attr("class", "scatter-dot")
+255 .on("mouseover", function (event, d) {
+256 scatterInfoBox.text(`State/UT: ${d['State/UTs']}, Geographical Area: ${d['Geographical area']} sq km, Total Forest: ${d['Total fore
+257 })
+258 .on("mouseout", function () {
+259 scatterInfoBox.text("Hover over a point to see details");
+260 });
+261
+262
+263
+264 }).catch(error => {
+265 console.error("Error loading the CSV file: ", error);
+266 });
+267
+268
+269
+270 const timeMargin = { top: 20, right: 30, bottom: 70, left: 70 };
+271 const timeWidth = 800 - timeMargin.left - timeMargin.right;
+272 const timeHeight = 500 - timeMargin.top - timeMargin.bottom;
+273
+274 const svgTimeline = d3.select("#timeline-chart")
+275 .append("svg")
+276 .attr("width", timeWidth + timeMargin.left + timeMargin.right)
+277 .attr("height", timeHeight + timeMargin.top + timeMargin.bottom)
+278 .append("g")
+279 .attr("transform", `translate(${timeMargin.left},${timeMargin.top})`);
+280
+281 // Read the data
+282 d3.csv("Forest2.csv").then(function (data) {
+283 console.log(data)
+284 const yearKeys = Object.keys(data[0]).slice(1).map(Number);
+285 const stateTimelineData = data.map(d => ({
+286 state: d['State/UTs'],
+287 values: yearKeys.map(year => ({ year, cover: +d[year] }))
+288 }));
+289
+290 const xTimeScale = d3.scaleLinear()
+291 .domain(d3.extent(yearKeys))
+292 .range([0, timeWidth]);
+const yTimeScale = d3.scaleLinear()
+
+295 .domain([0, d3.max(stateTimelineData, s => d3.max(s.values, v => v.cover))])
+296 .nice()
+297 .range([timeHeight, 0]);
+298
+299 const lineGenerator = d3.line()
+300 .x(d => xTimeScale(d.year))
+301 .y(d => yTimeScale(d.cover));
+302
+303 const lines = svgTimeline.selectAll(".line")
+304 .data(stateTimelineData)
+305 .enter()
+306 .append("path")
+307 .attr("class", "line")
+308 .attr("d", d => lineGenerator(d.values))
+309 .attr("stroke", () => d3.schemeCategory10[Math.floor(Math.random() * 10)])
+310 .on("mouseover", function (event, d) {
+311 d3.select("#tooltip")
+312 .style("opacity", 1)
+313 .html(`<strong>${d.state}</strong>`)
+314 .style("left", (event.pageX + 5) + "px")
+315 .style("top", (event.pageY - 28) + "px");
+316 })
+317 .on("mouseout", function () {
+318 d3.select("#tooltip").style("opacity", 0);
+319 });
+320
+321 svgTimeline.append("g")
+322 .attr("transform", `translate(0,${timeHeight})`)
+323 .call(d3.axisBottom(xTimeScale).tickFormat(d3.format("d")))
+324 .append("text")
+325 .attr("x", timeWidth)
+326 .attr("y", -10)
+327 .attr("fill", "black")
+328 .attr("class", "axis-label")
+329 .text("Year");
+330
+331 svgTimeline.append("g")
+332 .call(d3.axisLeft(yTimeScale))
+333 .append("text")
+334 .attr("x", -50)
+335 .attr("y", -20)
+336 .attr("fill", "black")
+337 .attr("class", "axis-label")
+338 .text("Forest Cover (sq km)");
+339
+340
+341 }).catch(error => {
+342 console.error("Error loading the CSV file: ", error);
+343 });
+344
+345
+346 </script>
+347
+348
+349
+350 <!-- Code injected by live-server -->
+351 <script>
+352 // <![CDATA[ <-- For SVG support
+353 if ('WebSocket' in window) {
+354 (function () {
+355 function refreshCSS() {
+356 var sheets = [].slice.call(document.getElementsByTagName("link"));
+357 var head = document.getElementsByTagName("head")[0];
+358 for (var i = 0; i < sheets.length; ++i) {
+359 var elem = sheets[i];
+360 var parent = elem.parentElement || head;
+361 parent.removeChild(elem);
+362 var rel = elem.rel;
+363 if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+364 var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+365 elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+366 }
+367 parent.appendChild(elem);
+368 }
+369 }
+370 var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+371 var address = protocol + window.location.host + window.location.pathname + '/ws';
+372 var socket = new WebSocket(address);
+373 socket.onmessage = function (msg) {
+374 if (msg.data == 'reload') window.location.reload();
+375 else if (msg.data == 'refreshcss') refreshCSS();
+376 };
+377 if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+378 console.log('Live reload enabled.');
+379 sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+380 }
+381 })();
+382 }
+383 else {
+384 console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+385 }
+386 // ]]>
+387 </script>
+388 </body>
+389
+390 </html>

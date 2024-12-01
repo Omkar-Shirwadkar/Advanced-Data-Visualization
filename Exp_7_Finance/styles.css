@@ -1,0 +1,39 @@
+/* .chart-container {
+    margin: 20px;
+    display: inline-block;
+    border: 1px solid #ccc;
+    padding: 10px;
+}
+
+.tooltip {
+    position: absolute;
+    text-align: center;
+    width: auto;
+    height: auto;
+    padding: 8px;
+    font-size: 12px;
+    background: lightgray;
+    border: 1px solid gray;
+    border-radius: 4px;
+    pointer-events: none;
+    visibility: hidden;
+} */
+
+.chart-container {
+    margin: 20px;
+    display: inline-block;
+    border: 1px solid #ccc;
+    padding: 10px;
+}
+
+.tooltip {
+    position: absolute;
+    text-align: center;
+    padding: 8px;
+    font-size: 12px;
+    background: lightgray;
+    border: 1px solid gray;
+    border-radius: 4px;
+    pointer-events: none;
+    visibility: hidden;
+}
