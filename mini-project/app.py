@@ -59,7 +59,7 @@ def show_assistant_message(message):
 
 
 # Configure generative AI
-genai.configure(api_key="AIzaSyC-m15SDH7XEW8u6cn1xw4xs0ZMTQAVQ-Y")
+genai.configure(api_key="YOUR-API-KEY")
 model = genai.GenerativeModel(model_name="gemini-1.5-pro")
 
 st.set_page_config(page_title="Chart Genie", layout="wide", page_icon="📊")
